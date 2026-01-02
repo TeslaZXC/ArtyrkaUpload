@@ -4,3 +4,6 @@ sqlalchemy
 python-multipart
 aiofiles
 jinja2
+aiogram
+python-dotenv
+aiohttp
