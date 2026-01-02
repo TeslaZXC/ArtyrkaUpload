@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Admin Panel</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        button.delete {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .upload-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>File Upload & Admin</h1>
+
+    <div class="upload-container">
+        <h2>Upload File(s)</h2>
+        <input type="file" id="fileInput" multiple>
+        <br><br>
+        <label for="expiration">Expires in:</label>
+        <select id="expiration">
+            <option value="never">Never</option>
+            <option value="1d">1 Day</option>
+            <option value="7d">7 Days</option>
+            <option value="1m">1 Month</option>
+        </select>
+        <br><br>
+        <button onclick="uploadFile()">Upload</button>
+        <p id="uploadStatus"></p>
+    </div>
+
+    <h2>Uploaded Files</h2>
+    <table id="filesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Filename</th>
+                <th>Short Link</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        const API_URL = "";
+
+        async function loadFiles() {
+            const response = await fetch('/api/admin/files');
+            const files = await response.json();
+            const tbody = document.querySelector('#filesTable tbody');
+            tbody.innerHTML = '';
+            files.forEach(file => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${file.id}</td>
+                    <td>${file.filename}</td>
+                    <td><a href="${file.download_url}" target="_blank">${window.location.origin}${file.download_url}</a></td>
+                    <td>${new Date(file.created_at).toLocaleString()}</td>
+                    <td><button class="delete" onclick="deleteFile(${file.id})">Delete</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            const expiration = document.getElementById('expiration').value;
+
+            if (files.length === 0) {
+                alert("Please select at least one file");
+                return;
+            }
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+            formData.append('expiration', expiration);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                document.getElementById('uploadStatus').innerText = `Uploaded! Link: ${window.location.origin}/${result.short_code}`;
+                loadFiles(); // Refresh list
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('uploadStatus').innerText = "Upload failed";
+            }
+        }
+
+        async function deleteFile(id) {
+            if (!confirm("Are you sure?")) return;
+            await fetch(`/api/admin/files/${id}`, { method: 'DELETE' });
+            loadFiles();
+        }
+
+        loadFiles();
+    </script>
+</body>
+
+</html>
